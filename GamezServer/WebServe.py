@@ -1,31 +1,31 @@
+import json
 import os
 import shutil
-import cherrypy
+import tarfile
+import urllib
+import urllib2
+from distutils.version import StrictVersion
+
 import GamezServer
-import sys
+import cherrypy
 from GamezServer.DAO import DAO
 from GamezServer.Task import Task
-import urllib2
-import json
-import urllib
-from distutils import version
-from distutils.version import StrictVersion
-import tarfile
-import subprocess
+
+
 class WebServe(object):
     """description of class"""
 
     @cherrypy.expose
     def upgradeGamezServer(self, downloadUrl, newVersion):
         appPath = GamezServer.Service.APPPATH
-        filesToIgnore = ["GamezServer.ini","GamezServer.db"]
+        filesToIgnore = ["GamezServer.ini", "GamezServer.db"]
         filesToIgnoreSet = set(filesToIgnore)
-        updatePath = os.path.join(appPath,"update")
-        if not os.path.exists(updatePath):     
+        updatePath = os.path.join(appPath, "update")
+        if not os.path.exists(updatePath):
             os.makedirs(updatePath)
         data = urllib2.urlopen(downloadUrl)
-        downloadPath = os.path.join(appPath,data.geturl().split('/')[-1])
-        downloadedFile = open(downloadPath,'wb')
+        downloadPath = os.path.join(appPath, data.geturl().split('/')[-1])
+        downloadedFile = open(downloadPath, 'wb')
         downloadedFile.write(data.read())
         downloadedFile.close()
         tarredFile = tarfile.open(downloadPath)
@@ -33,20 +33,20 @@ class WebServe(object):
         tarredFile.close()
         os.remove(downloadPath)
         contentsDir = [x for x in os.listdir(updatePath) if os.path.isdir(os.path.join(updatePath, x))]
-        updatedFilesPath = os.path.join(updatePath,contentsDir[0])
+        updatedFilesPath = os.path.join(updatePath, contentsDir[0])
         for dirname, dirnames, filenames in os.walk(updatedFilesPath):
-            dirname = dirname[len(updatedFilesPath)+1:]
+            dirname = dirname[len(updatedFilesPath) + 1:]
             for file in filenames:
-                src = os.path.join(updatedFilesPath,dirname,file)
-                dest = os.path.join(appPath,dirname,file)
-                if((file in filesToIgnoreSet) == True):
+                src = os.path.join(updatedFilesPath, dirname, file)
+                dest = os.path.join(appPath, dirname, file)
+                if ((file in filesToIgnoreSet) == True):
                     continue
-                if(os.path.isfile(dest)):
+                if (os.path.isfile(dest)):
                     os.remove(dest)
-                os.renames(src,dest)
+                os.renames(src, dest)
         shutil.rmtree(updatePath)
         dao = DAO()
-        dao.UpdateMasterSiteData("currentVersion",newVersion)
+        dao.UpdateMasterSiteData("currentVersion", newVersion)
         dao.UpdateMasterSiteData("HeaderContents", """ 
                     <script src="/static/scripts/jquery.js"></script>
             <script src="/static/scripts/jquery-ui.js"></script>
@@ -97,9 +97,11 @@ class WebServe(object):
     def checkForVersion(self):
         dao = DAO()
         currentVersion = dao.GetSiteMasterData("currentVersion")
-        if(currentVersion == None or currentVersion == ""):
+        if (currentVersion == None or currentVersion == ""):
             currentVersion = '0.0.0'
-        webRequest = urllib2.Request('https://api.github.com/repos/mdlesk/GamezServer/releases', headers={'User-Agent' : "Magic Browser", "Accept" : "application/vnd.github.v3+json"})
+        webRequest = urllib2.Request('https://api.github.com/repos/mdlesk/GamezServer/releases',
+                                     headers={'User-Agent': "Magic Browser",
+                                              "Accept": "application/vnd.github.v3+json"})
         response = urllib2.urlopen(webRequest)
         githubReleaseData = response.read()
         jsonReleaseData = json.loads(githubReleaseData)
@@ -108,12 +110,13 @@ class WebServe(object):
         upgradeVersionUrl = ""
         for jsonRelease in jsonReleaseData:
             releaseVersion = jsonRelease['tag_name']
-            if(StrictVersion(releaseVersion) > StrictVersion(highestVersion)):
-               highestVersion = releaseVersion
-               upgradeVersionUrl = jsonRelease['tarball_url']
-               upgradeVersionDescription = jsonRelease['body']
-        if(StrictVersion(highestVersion) > StrictVersion(currentVersion) and upgradeVersionUrl != ""):
-            return "GamezServer v." + highestVersion + " is available. Release Notes: " + upgradeVersionDescription + ". Click <a href='/upgradeGamezServer?downloadUrl=" + urllib.quote_plus(upgradeVersionUrl) + "&newVersion=" + highestVersion  + "'>Here</a> to upgrade"
+            if (StrictVersion(releaseVersion) > StrictVersion(highestVersion)):
+                highestVersion = releaseVersion
+                upgradeVersionUrl = jsonRelease['tarball_url']
+                upgradeVersionDescription = jsonRelease['body']
+        if (StrictVersion(highestVersion) > StrictVersion(currentVersion) and upgradeVersionUrl != ""):
+            return "GamezServer v." + highestVersion + " is available. Release Notes: " + upgradeVersionDescription + ". Click <a href='/upgradeGamezServer?downloadUrl=" + urllib.quote_plus(
+                upgradeVersionUrl) + "&newVersion=" + highestVersion + "'>Here</a> to upgrade"
         return ""
 
     @cherrypy.expose
@@ -145,7 +148,8 @@ class WebServe(object):
                                 <ul id="downloadedList" style="overflow-y:scroll;border: 1px solid black;width: 300px;min-height: 300px;max-height:300px;list-style-type: none;margin: 0;padding: 5px 0 0 0;float: left;margin-right: 10px;" class="connectedSortable">
                                 """
         for downloadedGame in downloadedGames:
-            content = content + '<li style="margin: 0 5px 5px 5px;padding: 5px;font-size: 1.2em;width: 300px;" class="ui-state-default" value="' + str(downloadedGame[4]) + '">' + str(downloadedGame[1]) + '</li>'
+            content = content + '<li style="margin: 0 5px 5px 5px;padding: 5px;font-size: 1.2em;width: 300px;" class="ui-state-default" value="' + str(
+                downloadedGame[4]) + '">' + str(downloadedGame[1]) + '</li>'
         content = content + """
                                   
                                 </ul>
@@ -154,7 +158,8 @@ class WebServe(object):
                                 <ul id="snatchedList" style="overflow-y:scroll;border: 1px solid black;width: 300px;min-height: 300px;max-height:300px;list-style-type: none;margin: 0;padding: 5px 0 0 0;float: left;margin-right: 10px;" class="connectedSortable">
                                 """
         for snatchedGame in snatchedGames:
-            content = content + '<li style="margin: 0 5px 5px 5px;padding: 5px;font-size: 1.2em;width: 300px;" class="ui-state-default" value="' + str(snatchedGame[4]) + '">' + str(snatchedGame[1]) + '</li>'
+            content = content + '<li style="margin: 0 5px 5px 5px;padding: 5px;font-size: 1.2em;width: 300px;" class="ui-state-default" value="' + str(
+                snatchedGame[4]) + '">' + str(snatchedGame[1]) + '</li>'
         content = content + """
                                 </ul>
                             </td>
@@ -162,7 +167,8 @@ class WebServe(object):
                                 <ul id="wantedList" style="overflow-y:scroll;border: 1px solid black;width: 300px;min-height: 300px;max-height:300px;list-style-type: none;margin: 0;padding: 5px 0 0 0;float: left;margin-right: 10px;" class="connectedSortable">
                                 """
         for wantedGame in wantedGames:
-            content = content + '<li style="margin: 0 5px 5px 5px;padding: 5px;font-size: 1.2em;width: 300px;" class="ui-state-default" value="' + str(wantedGame[4]) + '">' + str(wantedGame[1]) + '</li>'
+            content = content + '<li style="margin: 0 5px 5px 5px;padding: 5px;font-size: 1.2em;width: 300px;" class="ui-state-default" value="' + str(
+                wantedGame[4]) + '">' + str(wantedGame[1]) + '</li>'
         content = content + """
                                 </ul>
                             </td>
@@ -233,7 +239,7 @@ class WebServe(object):
         return content
 
     @cherrypy.expose
-    def index(self,statusMessage=None,addedGameId=None):
+    def index(self, statusMessage=None, addedGameId=None):
         dao = DAO()
         wantedGames = dao.GetWantedGames()
         currentHeaderContent = dao.GetSiteMasterData("HeaderContents")
@@ -241,7 +247,7 @@ class WebServe(object):
         currentVersion = dao.GetSiteMasterData("currentVersion")
         content = ""
         content = content + currentHeaderContent.format(currentVersion)
-        if(statusMessage != None):
+        if (statusMessage != None):
             content = content + "<script>$(document).ready(function () {toastr.info('" + statusMessage + "');});</script>"
         content = content + """
             <br />     
@@ -250,19 +256,27 @@ class WebServe(object):
         content = content + "<tbody>"
         for game in wantedGames:
             optionList = ""
-            if(game[3] == 'Wanted'):
+            if (game[3] == 'Wanted'):
                 optionList = optionList + '<option selected>Wanted</option>'
             else:
                 optionList = optionList + '<option>Wanted</option>'
-            if(game[3] == 'Snatched'):
+            if (game[3] == 'Snatched'):
                 optionList = optionList + '<option selected>Snatched</option>'
             else:
                 optionList = optionList + '<option>Snatched</option>'
-            if(game[3] == 'Downloaded'):
+            if (game[3] == 'Downloaded'):
                 optionList = optionList + '<option selected>Downloaded</option>'
             else:
                 optionList = optionList + '<option>Ignored</option>'
-            rowContent = "<tr><td>" + game[0] + "</td><td>" + game[1] + "</td><td>" + game[2] + """</td><td><select onchange="statusUrl='/UpdateStatus?status=' + $(this).val() + '&gameId=""" + str(game[4]) + """';$.ajax({type: 'GET',url: statusUrl,success: function (data) {toastr.info(data);},error: function (xhr, ajaxOptions, thrownError) {toastr.info('Unable to update: ' + thrownError);}});">""" + optionList + "</select></td><td><a href='/DeleteGame?gameId=" + str(game[4]) + "'>Delete</a>&nbsp;|&nbsp;<a href='/ForceSearch?gameId=" + str(game[4]) + """' onclick="forceSearchUrl = '/ForceSearch?gameId=""" + str(game[4]) + """';$.ajax({type: 'GET',url: forceSearchUrl,success: function (data) {toastr.info(data);},error: function (xhr, ajaxOptions, thrownError) {toastr.info('Unable to force search: ' + thrownError);}});return false;">Force Search</a>&nbsp;|&nbsp;<a href='/ForceSearch?gameId=""" + str(game[4]) + """' onclick="forceSearchNewUrl = '/ForceSearchNew?gameId=""" + str(game[4]) + """';$.ajax({type: 'GET',url: forceSearchNewUrl,success: function (data) {toastr.info(data);},error: function (xhr, ajaxOptions, thrownError) {toastr.info('Unable to force search: ' + thrownError);}});return false;">Force Search New</a></td></tr>"""
+            rowContent = "<tr><td>" + game[0] + "</td><td>" + game[1] + "</td><td>" + game[
+                2] + """</td><td><select onchange="statusUrl='/UpdateStatus?status=' + $(this).val() + '&gameId=""" + str(
+                game[
+                    4]) + """';$.ajax({type: 'GET',url: statusUrl,success: function (data) {toastr.info(data);},error: function (xhr, ajaxOptions, thrownError) {toastr.info('Unable to update: ' + thrownError);}});">""" + optionList + "</select></td><td><a href='/DeleteGame?gameId=" + str(
+                game[4]) + "'>Delete</a>&nbsp;|&nbsp;<a href='/ForceSearch?gameId=" + str(
+                game[4]) + """' onclick="forceSearchUrl = '/ForceSearch?gameId=""" + str(game[
+                                                                                             4]) + """';$.ajax({type: 'GET',url: forceSearchUrl,success: function (data) {toastr.info(data);},error: function (xhr, ajaxOptions, thrownError) {toastr.info('Unable to force search: ' + thrownError);}});return false;">Force Search</a>&nbsp;|&nbsp;<a href='/ForceSearch?gameId=""" + str(
+                game[4]) + """' onclick="forceSearchNewUrl = '/ForceSearchNew?gameId=""" + str(game[
+                                                                                                   4]) + """';$.ajax({type: 'GET',url: forceSearchNewUrl,success: function (data) {toastr.info(data);},error: function (xhr, ajaxOptions, thrownError) {toastr.info('Unable to force search: ' + thrownError);}});return false;">Force Search New</a></td></tr>"""
             content = content + rowContent
         content = content + "</tbody>"
         content = content + """
@@ -287,10 +301,10 @@ class WebServe(object):
                         }
                     });
         """
-        if(addedGameId != None):
+        if (addedGameId != None):
             for item in str(addedGameId).split(','):
                 addedGame = dao.GetWantedGame(item)
-                if(addedGame != None):
+                if (addedGame != None):
                     content = content + """
                             toastr.info('Searching for game """ + str(addedGame[2]).replace("'", "\\'") + """');
                             forceSearchUrl = '/ForceSearch?gameId=""" + str(addedGame[0]) + """';
@@ -309,7 +323,7 @@ class WebServe(object):
                 });
             </script>
         """
-        
+
         return content
 
     @cherrypy.expose
@@ -486,7 +500,7 @@ class WebServe(object):
         raise cherrypy.HTTPRedirect("/?statusMessage=Logs Cleared")
 
     @cherrypy.expose
-    def PostProcess(self,gameId,processDir):
+    def PostProcess(self, gameId, processDir):
         processDir = urllib.unquote_plus(processDir)
         task = Task()
         return task.PostProcess(processDir, gameId)
@@ -506,34 +520,34 @@ class WebServe(object):
             gameId = game[1]
             wantedGameIds = wantedGameIds + str(dao.AddWantedGame(platformId, gameId, "Wanted")[0]) + ','
         print wantedGameIds
-        if(len(wantedGameIds) > 0):
+        if (len(wantedGameIds) > 0):
             wantedGameIds = wantedGameIds[:-1]
         raise cherrypy.HTTPRedirect("/?statusMessage=Games Added&addedGameId=" + wantedGameIds)
 
     @cherrypy.expose
-    def GetFolders(self,folderPath,upDirectory):
+    def GetFolders(self, folderPath, upDirectory):
         task = Task()
         print('Getting folders')
-        return task.GetFolders(folderPath,upDirectory)
+        return task.GetFolders(folderPath, upDirectory)
 
     @cherrypy.expose
-    def DeleteGame(self,gameId):
+    def DeleteGame(self, gameId):
         dao = DAO()
         dao.DeleteWantedGame(gameId)
         raise cherrypy.HTTPRedirect("/?statusMessage=Game Deleted")
 
     @cherrypy.expose
-    def ForceSearch(self,gameId):
+    def ForceSearch(self, gameId):
         task = Task()
         return task.ForceGameSearch(gameId)
 
     @cherrypy.expose
-    def ForceSearchNew(self,gameId):
+    def ForceSearchNew(self, gameId):
         task = Task()
         return task.ForceGameSearch(gameId, True)
 
     @cherrypy.expose
-    def UpdateStatus(self,status,gameId):
+    def UpdateStatus(self, status, gameId):
         try:
             dao = DAO()
             dao.UpdateWantedGameStatus(gameId, status)
@@ -542,48 +556,60 @@ class WebServe(object):
             return e
 
     @cherrypy.expose
-    def SaveSettings(self,headerContent=None,usenetCrawlerEnabled=None,usenetCrawlerApiKey=None,searcherPriority=None,sabnzbdEnabled=None,sabnzbdBaseUrl=None,
-                     sabnzbdApiKey=None,sabnzbdCategory=None,destinationFolder=None,footerContent=None,onlySearchNew=None,launchBrowser=None,
-                     abgx360Region=None,abgx360Path=None,abgx360Enabled=None,xbox360Extensions=None):
+    def SaveSettings(self, headerContent=None, usenetCrawlerEnabled=None, usenetCrawlerApiKey=None,
+                     nzbFinderEnabled=None, nzbFinderApiKey=None,
+                     iptorrentsEnabled=None, iptorrentsRssURL=None,
+                     searcherPriority=None, sabnzbdEnabled=None, sabnzbdBaseUrl=None,
+                     sabnzbdApiKey=None, sabnzbdCategory=None, destinationFolder=None, footerContent=None,
+                     onlySearchNew=None, launchBrowser=None,
+                     abgx360Region=None, abgx360Path=None, abgx360Enabled=None, xbox360Extensions=None):
         try:
             dao = DAO()
-            if(headerContent != None):
+            if headerContent is not None:
                 dao.UpdateMasterSiteData("HeaderContents", headerContent)
-            if(footerContent != None):
+            if footerContent is not None:
                 dao.UpdateMasterSiteData("FooterContents", footerContent)
-            if(usenetCrawlerEnabled != None):
+            if usenetCrawlerEnabled is not None:
                 dao.UpdateMasterSiteData("usenetCrawlerEnabled", usenetCrawlerEnabled)
-            if(usenetCrawlerApiKey != None):
+            if usenetCrawlerApiKey is not None:
                 dao.UpdateMasterSiteData("usenetCrawlerApiKey", usenetCrawlerApiKey)
-            if(searcherPriority != None):
+            if nzbFinderEnabled is not None:
+                dao.UpdateMasterSiteData("nzbFinderEnabled", nzbFinderEnabled)
+            if nzbFinderApiKey is not None:
+                dao.UpdateMasterSiteData("nzbFinderKey", nzbFinderApiKey)
+            if iptorrentsEnabled is not None:
+                dao.UpdateMasterSiteData("iptorrentsEnabled", iptorrentsEnabled)
+            if iptorrentsRssURL is not None:
+                dao.UpdateMasterSiteData("iptorrentsRssURL", iptorrentsRssURL)
+            if searcherPriority is not None:
                 dao.SetSearcherPriority(searcherPriority)
-            if(usenetCrawlerApiKey != None):
+            if sabnzbdEnabled is not None:
                 dao.UpdateMasterSiteData("sabnzbdEnabled", sabnzbdEnabled)
-            if(usenetCrawlerApiKey != None):
+            if sabnzbdBaseUrl is not None:
                 dao.UpdateMasterSiteData("sabnzbdBaseUrl", sabnzbdBaseUrl)
-            if(usenetCrawlerApiKey != None):
+            if sabnzbdApiKey is not None:
                 dao.UpdateMasterSiteData("sabnzbdApiKey", sabnzbdApiKey)
-            if(sabnzbdCategory != None):
+            if sabnzbdCategory is not None:
                 dao.UpdateMasterSiteData("sabnzbdCategory", sabnzbdCategory)
-            if(destinationFolder != None):
+            if destinationFolder is not None:
                 dao.UpdateMasterSiteData("destinationFolder", destinationFolder)
-            if(onlySearchNew != None):
+            if onlySearchNew is not None:
                 dao.UpdateMasterSiteData("onlySearchNew", onlySearchNew)
-            if(launchBrowser != None):
+            if launchBrowser is not None:
                 dao.UpdateMasterSiteData("launchBrowser", launchBrowser)
-            if(abgx360Enabled != None):
+            if abgx360Enabled is not None:
                 dao.UpdateMasterSiteData("abgx360Enabled", abgx360Enabled)
-            if(abgx360Path != None):
+            if abgx360Path is not None:
                 dao.UpdateMasterSiteData("abgx360Path", abgx360Path)
-            if(abgx360Region != None):
+            if abgx360Region is not None:
                 dao.UpdateMasterSiteData("abgx360Region", abgx360Region)
-            if(xbox360Extensions != None):
-                dao.UpdateMasterSiteData("xbox360Extensions",xbox360Extensions)
+            if xbox360Extensions is not None:
+                dao.UpdateMasterSiteData("xbox360Extensions", xbox360Extensions)
             return "Settings Saved"
         except Exception as e:
-            #e = sys.exc_info()[0]
-            return "Error: " + e
-    
+            # e = sys.exc_info()[0]
+            return "Error: " + e.message
+
     @cherrypy.expose
     def Settings(self):
         dao = DAO()
@@ -596,6 +622,12 @@ class WebServe(object):
         usenetCrawlerEnabled = dao.GetSiteMasterData("usenetCrawlerEnabled")
         usenetCrawlerApiKey = dao.GetSiteMasterData("usenetCrawlerApiKey")
 
+        nzbFinderEnabled = dao.GetSiteMasterData("nzbFinderEnabled")
+        nzbFinderApiKey = dao.GetSiteMasterData("nzbFinderApiKey")
+
+        iptorrentsEnabled = dao.GetSiteMasterData("iptorrentsEnabled")
+        iptorrentsRssURL = dao.GetSiteMasterData("iptorrentsRssURL")
+
         sabnzbdEnabled = dao.GetSiteMasterData("sabnzbdEnabled")
         sabnzbdBaseUrl = dao.GetSiteMasterData("sabnzbdBaseUrl")
         sabnzbdApiKey = dao.GetSiteMasterData("sabnzbdApiKey")
@@ -607,27 +639,46 @@ class WebServe(object):
         abgx360Path = dao.GetSiteMasterData("abgx360Path")
         abgx360Region = dao.GetSiteMasterData("abgx360Region")
         xbox360Extensions = dao.GetSiteMasterData("xbox360Extensions")
-        
-        if(abgx360Region == None):
+
+        if (abgx360Region == None):
             abgx360Region = ""
 
-        if(usenetCrawlerEnabled == "true"):
+        if (usenetCrawlerEnabled == "true"):
             usenetCrawlerEnabled = "checked"
         else:
             usenetCrawlerEnabled = ""
-        if(sabnzbdEnabled == "true"):
+
+        if nzbFinderEnabled == "true":
+            nzbFinderEnabled = "checked"
+        else:
+            nzbFinderEnabled = ""
+
+        if iptorrentsEnabled == "true":
+            iptorrentsEnabled = "checked"
+        else:
+            iptorrentsEnabled = ""
+
+        if (sabnzbdEnabled == "true"):
             sabnzbdEnabled = "checked"
         else:
             sabnzbdEnabled = ""
-        if(onlySearchNew == "true"):
+
+        if (rtorrentEnabled == "true"):
+            rtorrentEnabled = "checked"
+        else:
+            rtorrentEnabled = ""
+
+        if (onlySearchNew == "true"):
             onlySearchNew = "checked"
         else:
             onlySearchNew = ""
-        if(launchBrowser == "true"):
+
+        if (launchBrowser == "true"):
             launchBrowser = "checked"
         else:
             launchBrowser = ""
-        if(abgx360Enabled == "true"):
+
+        if (abgx360Enabled == "true"):
             abgx360Enabled = "checked"
         else:
             abgx360Enabled = ""
@@ -686,7 +737,7 @@ class WebServe(object):
                         <div>
                             <label for="sabnzbdBaseUrl">Sabnzbd+ Base Url (ie: http://localhost:8080)</label>
                             <br />
-                            <input type="text" size="50" name="sabnzbdBaseUrl" id="sabnzbdBaseUrl" value='""" + sabnzbdBaseUrl  + """' />
+                            <input type="text" size="50" name="sabnzbdBaseUrl" id="sabnzbdBaseUrl" value='""" + sabnzbdBaseUrl + """' />
                         </div>
                         <br />
                         <div>
@@ -696,9 +747,45 @@ class WebServe(object):
                         </div>
                         <br />
                         <div>
-                            <label for="sabnzbdApiKey">Sabnzbd+ Category</label>
+                            <label for="sabnzbdCategory">Sabnzbd+ Category</label>
                             <br />
                             <input type="text" size="50" name="sabnzbdCategory" id="sabnzbdCategory" value='""" + sabnzbdCategory + """' />
+                        </div>
+                    </div>
+                </fieldset>
+                <fieldset align="left">
+                    <legend>rtorrent</legend>
+                    Enable?
+                    <input type="checkbox" id="rtorrentEnabled" """ + rtorrentEnabled + """ />
+                    <div id="rtorrentSection" style="display:none">
+                        <div>
+                            <label for="rtorrentBaseUrl">rtorrent+ Base Url (ie: httprpc://localhost/rutorrent)</label>
+                            <br />
+                            <input type="text" size="50" name="rtorrentBaseUrl" id="rtorrentBaseUrl" value='""" + rtorrentBaseUrl + """' />
+                        </div>
+                        <br />
+                        <div>
+                            <label for="rtorrentUsername">rTorrent Username</label>
+                            <br />
+                            <input type="text" size="50" name="rtorrentUsername" id="rtorrentUsername" value='""" + rtorrentUsername + """' />
+                        </div>
+                        <br />
+                        <div>
+                            <label for="rtorrentPassword">rTorrent Password</label>
+                            <br />
+                            <input type="text" size="50" name="rtorrentPassword" id="rtorrentPassword" value='""" + rtorrentPassword + """' />
+                        </div>
+                        <br />
+                        <div>
+                            <label for="rtorrentLabel">rtorrent Label</label>
+                            <br />
+                            <input type="text" size="50" name="rtorrentLabel" id="rtorrentLabel" value='""" + rtorrentLabel + """' />
+                        </div>
+                        <br />
+                        <div>
+                            <label for="rtorrentDir">rtorrent Directory</label>
+                            <br />
+                            <input type="text" size="50" name="rtorrentDir" id="rtorrentDir" value='""" + rtorrentDir + """' />
                         </div>
                     </div>
                 </fieldset>
@@ -708,6 +795,8 @@ class WebServe(object):
                 <legend>Search Order</legend>
                 <ul id="prioritiesSorter" align="left" border="1">
                   <li class="ui-state-default" id="usenetCrawlerPriority"><span class="ui-icon ui-icon-arrowthick-2-n-s"></span>Usenet-Crawler</li>
+                  <li class="ui-state-default" id="nzbFinderPriority"><span class="ui-icon ui-icon-arrowthick-2-n-s"></span>NZBFinder</li>
+                  <li class="ui-state-default" id="iptorrentsPriority"><span class="ui-icon ui-icon-arrowthick-2-n-s"></span>IPTorrents</li>
                 </ul>
                 </fieldset>
                 <fieldset align="left">
@@ -718,6 +807,26 @@ class WebServe(object):
                         <label for="usenetCrawlerApiKey">API Key</label>
                         <br />
                         <input type="text" size="50" name="usenetCrawlerApiKey" id="usenetCrawlerApiKey" value='""" + usenetCrawlerApiKey + """' />
+                    </div>
+                </fieldset>
+                <fieldset align="left">
+                    <legend>NZBFinder</legend>
+                    Enable?
+                    <input type="checkbox" id="nzbFinderEnabled" """ + nzbFinderEnabled + """ />
+                    <div id="nzbFinderSection" style="display:none">
+                        <label for="nzbFinderApiKey">API Key</label>
+                        <br />
+                        <input type="text" size="50" name="nzbFinderApiKey" id="nzbFinderApiKey" value='""" + nzbFinderApiKey + """' />
+                    </div>
+                </fieldset>
+                <fieldset align="left">
+                    <legend>IPTorrents</legend>
+                    Enable?
+                    <input type="checkbox" id="iptorrentsEnabled" """ + iptorrentsEnabled + """ />
+                    <div id="iptorrentsSection" style="display:none">
+                        <label for="iptorrentsRssURL">RSS URL</label>
+                        <br />
+                        <input type="text" size="50" name="iptorrentsRssURL" id="iptorrentsRssURL" value='""" + iptorrentsRssURL + """' />
                     </div>
                 </fieldset>
               </div>
@@ -739,7 +848,7 @@ class WebServe(object):
                         <div>
                             <label for="abgx360Path">ABGX360 Path (ie: C:\\Windows\\SysWOW64\\abgx360.exe)</label>
                             <br />
-                            <input type="text" size="50" name="abgx360Path" id="abgx360Path" value='""" + abgx360Path  + """' />
+                            <input type="text" size="50" name="abgx360Path" id="abgx360Path" value='""" + abgx360Path + """' />
                         </div>
                         <br />
                         <div>
@@ -881,17 +990,38 @@ class WebServe(object):
                     {
                         $('#usenetCrawlerSection').toggle();
                     }
+                    if($("#nzbFinderEnabled").is(':checked'))
+                    {
+                        $('#nzbFinderSection').toggle();
+                    }
+                    if($("#iptorrentsEnabled").is(':checked'))
+                    {
+                        $('#iptorrentsSection').toggle();
+                    }
                     if($("#sabnzbdEnabled").is(':checked'))
                     {
                         $('#sabnzbdSection').toggle();
+                    }
+                    if($("#rtorrentEnabled").is(':checked'))
+                    {
+                        $('#rtorrentSection').toggle();
                     }
                     $( "#prioritiesSorter" ).sortable();
                     $( "#prioritiesSorter" ).disableSelection();
                     $('#sabnzbdEnabled').change(function() {
                         $('#sabnzbdSection').toggle();
                     });
+                    $('#rtorrentEnabled').change(function() {
+                        $('#rtorrentSection').toggle();
+                    });
                     $('#usenetCrawlerEnabled').change(function() {
                         $('#usenetCrawlerSection').toggle();
+                    });
+                    $('#nzbFinderEnabled').change(function() {
+                        $('#nzbFinderSection').toggle();
+                    });
+                    $('#iptorrentsEnabled').change(function() {
+                        $('#iptorrentsSection').toggle();
                     });
                     if($("#abgx360Enabled").is(':checked'))
                     {
@@ -906,11 +1036,21 @@ class WebServe(object):
                         var assembledUrl = "/SaveSettings?headerContent=" + encodeURIComponent($("#headerContent").val());
                         assembledUrl = assembledUrl + "&usenetCrawlerEnabled=" + $("#usenetCrawlerEnabled").is(':checked');
                         assembledUrl = assembledUrl + "&usenetCrawlerApiKey=" + $("#usenetCrawlerApiKey").val();
+                        assembledUrl = assembledUrl + "&nzbFinderEnabled=" + $("#nzbFinderEnabled").is(':checked');
+                        assembledUrl = assembledUrl + "&nzbFinderApiKey=" + $("#nzbFinderApiKey").val();
+                        assembledUrl = assembledUrl + "&iptorrentsEnabled=" + $("#iptorrentsEnabled").is(':checked');
+                        assembledUrl = assembledUrl + "&iptorrentsRssURL=" + $("#iptorrentsRssURL").val();
                         assembledUrl = assembledUrl + "&searcherPriority=" + $("#prioritiesSorter").sortable('toArray');
                         assembledUrl = assembledUrl + "&sabnzbdEnabled=" + $("#sabnzbdEnabled").is(':checked');
                         assembledUrl = assembledUrl + "&sabnzbdBaseUrl=" + $("#sabnzbdBaseUrl").val();
                         assembledUrl = assembledUrl + "&sabnzbdApiKey=" + $("#sabnzbdApiKey").val();
                         assembledUrl = assembledUrl + "&sabnzbdCategory=" + $("#sabnzbdCategory").val();
+                        assembledUrl = assembledUrl + "&rtorrentEnabled=" + $("#rtorrentEnabled").is(':checked');
+                        assembledUrl = assembledUrl + "&rtorrentBaseUrl=" + $("#rtorrentBaseUrl").val();
+                        assembledUrl = assembledUrl + "&rtorrentUsername=" + $("#rtorrentUsername").val();
+                        assembledUrl = assembledUrl + "&rtorrentPassword=" + $("#rtorrentPassword").val();
+                        assembledUrl = assembledUrl + "&rtorrentLabel=" + $("#rtorrentLabel").val();
+                        assembledUrl = assembledUrl + "&rtorrentDir=" + $("#rtorrentDir").val();
                         assembledUrl = assembledUrl + "&destinationFolder=" + $("#destinationFolder").val();
                         assembledUrl = assembledUrl + "&footerContent=" + encodeURIComponent($("#footerContent").val())
                         assembledUrl = assembledUrl + "&onlySearchNew=" + $("#onlySearchNew").is(':checked');
@@ -936,9 +1076,9 @@ class WebServe(object):
         return content
 
     @cherrypy.expose
-    def Log(self,level=None):
+    def Log(self, level=None):
         dao = DAO()
-        if(level==None or level=="All"):
+        if (level == None or level == "All"):
             level = "All"
             logs = dao.GetLogMessages()
         else:
@@ -992,4 +1132,3 @@ class WebServe(object):
             </script>
         """
         return content
-   

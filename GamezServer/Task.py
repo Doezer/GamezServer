@@ -234,7 +234,7 @@ class Task(object):
                     for searcher in searchers:
                         searcherInstance = searchers.GetSearcher(searcher[0])
                         if(searcherInstance != None):
-                            tmpResult = searcherInstance.search(game[1],game[2],game[0]);
+                            tmpResult = searcherInstance.search(game[0]);
                             if(tmpResult != None):
                                 result = result + tmpResult
         else:
@@ -260,7 +260,7 @@ class Task(object):
                         searchers = Searchers()
                         searcherInstance = searchers.GetSearcher(searcher[0],forceNew)
                         if(searcherInstance != None):
-                            tmpResult = searcherInstance.search(game[1],game[2],game[0]);
+                            tmpResult = searcherInstance.search(game[0]);
                             if(tmpResult != None):
                                 result = result + tmpResult
                 if(result != ""):

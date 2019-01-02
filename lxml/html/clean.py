@@ -581,12 +581,12 @@ def _link_text(text, link_regexes, avoid_hosts, factory):
         for regex in link_regexes:
             regex_pos = last_pos
             while 1:
-                match = regex.search(text, pos=regex_pos)
+                match = regex.search()
                 if match is None:
                     break
                 host = match.group('host')
                 for host_regex in avoid_hosts:
-                    if host_regex.search(host):
+                    if host_regex.search():
                         regex_pos = match.end()
                         break
                 else:
